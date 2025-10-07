@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>张勇工作日程表</title>
+    
+    <!-- 引入 Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -21,31 +26,33 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 15px;
         }
         
         /* 导航栏样式 */
         .navbar {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 15px;
             background: linear-gradient(135deg, #2c3e50, #4a6491);
             color: white;
-            padding: 15px 20px;
+            padding: 15px;
             border-radius: 10px;
             margin-bottom: 20px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         
         .navbar-title {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
+            text-align: center;
         }
         
         .navbar-menu {
             display: flex;
-            gap: 10px;
             flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
         }
         
         .navbar-menu button {
@@ -53,14 +60,17 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
             cursor: pointer;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 6px;
             transition: all 0.3s;
+            font-size: 0.9rem;
+            flex: 1;
+            min-width: 80px;
+            text-align: center;
         }
         
         .navbar-menu button:hover {
             background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
         }
         
         .navbar-menu button.active {
@@ -69,16 +79,21 @@
         }
         
         .object-selector {
-            position: relative;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
         }
         
         .object-selector select {
             background-color: rgba(255, 255, 255, 0.15);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-radius: 6px;
             cursor: pointer;
+            min-width: 120px;
         }
         
         .object-selector select option {
@@ -86,13 +101,23 @@
             color: white;
         }
         
+        .btn-manage-objects {
+            background-color: #9b59b6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
         /* 内容区域样式 */
         .content {
             background-color: white;
             border-radius: 10px;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            min-height: 500px;
+            min-height: 400px;
         }
         
         /* 周视图样式 */
@@ -103,33 +128,37 @@
         
         .week-header {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 15px;
             padding-bottom: 15px;
             border-bottom: 1px solid #eaeaea;
         }
         
         .week-title {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: bold;
             color: #2c3e50;
+            text-align: center;
         }
         
         .week-nav {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
         }
         
         .week-nav button {
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.3s;
+            font-size: 0.9rem;
         }
         
         .week-nav button:hover {
@@ -140,10 +169,11 @@
             background-color: #2ecc71;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.3s;
+            font-size: 0.9rem;
         }
         
         .add-record-btn:hover {
@@ -152,28 +182,64 @@
         
         .week-days {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 15px;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        @media (min-width: 768px) {
+            .week-days {
+                grid-template-columns: repeat(7, 1fr);
+            }
+            
+            .navbar {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .navbar-title {
+                text-align: left;
+                font-size: 1.5rem;
+            }
+            
+            .navbar-menu {
+                justify-content: flex-end;
+            }
+            
+            .navbar-menu button {
+                flex: none;
+            }
+            
+            .week-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .week-title {
+                text-align: left;
+                font-size: 1.3rem;
+            }
         }
         
         .day-column {
             border: 1px solid #e0e0e0;
             border-radius: 8px;
-            padding: 15px;
-            min-height: 400px;
+            padding: 12px;
             background-color: #f9f9f9;
             transition: transform 0.3s;
+            min-height: 200px;
         }
         
         .day-column:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
         
         .day-header {
             text-align: center;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
             border-bottom: 1px solid #e0e0e0;
             cursor: pointer;
             font-weight: bold;
@@ -181,6 +247,7 @@
             transition: background-color 0.3s;
             border-radius: 6px;
             padding: 8px;
+            font-size: 0.9rem;
         }
         
         .day-header:hover {
@@ -190,24 +257,25 @@
         .records-list {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
         
         .record-item {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            padding: 10px;
+            gap: 8px;
+            padding: 8px;
             border-radius: 6px;
             background-color: white;
             border-left: 4px solid #3498db;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
             position: relative;
+            font-size: 0.85rem;
         }
         
         .record-item input[type="checkbox"] {
-            margin-top: 4px;
-            transform: scale(1.2);
+            margin-top: 3px;
+            transform: scale(1.1);
         }
         
         .record-item.checked {
@@ -228,6 +296,7 @@
             border-radius: 4px;
             background-color: #e8f4fc;
             transition: background-color 0.3s;
+            font-size: 0.8rem;
         }
         
         .object-tag:hover {
@@ -236,13 +305,13 @@
         
         .delete-record {
             position: absolute;
-            right: 10px;
-            top: 10px;
+            right: 8px;
+            top: 8px;
             background: none;
             border: none;
             color: #e74c3c;
             cursor: pointer;
-            font-size: 1.2rem;
+            font-size: 1rem;
             opacity: 0.7;
             transition: opacity 0.3s;
         }
@@ -258,32 +327,43 @@
         
         .month-header {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 15px;
             padding-bottom: 15px;
             border-bottom: 1px solid #eaeaea;
+        }
+        
+        @media (min-width: 768px) {
+            .month-header {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
         }
         
         .month-title {
             font-size: 1.3rem;
             font-weight: bold;
             color: #2c3e50;
+            text-align: center;
         }
         
         .month-nav {
             display: flex;
-            gap: 10px;
+            gap: 8px;
+            justify-content: center;
         }
         
         .month-nav button {
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 8px 15px;
+            padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
             transition: background-color 0.3s;
+            font-size: 0.9rem;
         }
         
         .month-nav button:hover {
@@ -293,31 +373,33 @@
         .month-calendar {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 10px;
+            gap: 5px;
+            font-size: 0.8rem;
         }
         
         .calendar-header {
             text-align: center;
-            padding: 10px;
+            padding: 8px 5px;
             font-weight: bold;
             background-color: #f0f0f0;
             border-radius: 6px;
+            font-size: 0.8rem;
         }
         
         .calendar-cell {
             border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 10px;
-            min-height: 120px;
+            border-radius: 6px;
+            padding: 8px 5px;
+            min-height: 80px;
             cursor: pointer;
             background-color: white;
             transition: all 0.3s;
             position: relative;
+            font-size: 0.75rem;
         }
         
         .calendar-cell:hover {
             background-color: #f0f7ff;
-            transform: scale(1.02);
         }
         
         .calendar-cell.today {
@@ -332,23 +414,23 @@
         
         .cell-date {
             font-weight: bold;
-            margin-bottom: 5px;
-            font-size: 1.1rem;
+            margin-bottom: 3px;
+            font-size: 0.9rem;
         }
         
         .cell-records {
-            font-size: 0.85rem;
             color: #666;
+            font-size: 0.7rem;
         }
         
         .record-count {
             display: inline-block;
             background-color: #3498db;
             color: white;
-            border-radius: 10px;
-            padding: 2px 8px;
-            font-size: 0.8rem;
-            margin-top: 5px;
+            border-radius: 8px;
+            padding: 1px 5px;
+            font-size: 0.7rem;
+            margin-top: 3px;
         }
         
         /* 模态框样式 */
@@ -363,14 +445,15 @@
             z-index: 1000;
             justify-content: center;
             align-items: center;
+            padding: 15px;
         }
         
         .modal-content {
             background-color: white;
             border-radius: 10px;
-            padding: 25px;
-            width: 90%;
-            max-width: 600px;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
@@ -380,13 +463,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
             border-bottom: 1px solid #eaeaea;
         }
         
         .modal-title {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: bold;
             color: #2c3e50;
         }
@@ -405,24 +488,25 @@
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .form-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: bold;
             color: #2c3e50;
+            font-size: 0.9rem;
         }
         
         .form-group input, 
         .form-group select, 
         .form-group textarea {
             width: 100%;
-            padding: 10px 15px;
+            padding: 8px 12px;
             border: 1px solid #ddd;
             border-radius: 6px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             transition: border-color 0.3s;
         }
         
@@ -435,23 +519,23 @@
         }
         
         .form-group textarea {
-            min-height: 120px;
+            min-height: 100px;
             resize: vertical;
         }
         
         .form-actions {
             display: flex;
             justify-content: flex-end;
-            gap: 15px;
-            margin-top: 25px;
+            gap: 10px;
+            margin-top: 20px;
         }
         
         .btn {
-            padding: 10px 20px;
+            padding: 8px 16px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.9rem;
             transition: all 0.3s;
         }
         
@@ -477,22 +561,12 @@
             background-color: #f39c12;
             color: white;
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             margin-top: 10px;
         }
         
         .btn-add-reminder:hover {
             background-color: #e67e22;
-        }
-        
-        .btn-manage-objects {
-            background-color: #9b59b6;
-            color: white;
-            margin-left: 10px;
-        }
-        
-        .btn-manage-objects:hover {
-            background-color: #8e44ad;
         }
         
         /* 提醒设置样式 */
@@ -516,7 +590,7 @@
         .importance-options {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
         }
         
         .importance-options label {
@@ -525,10 +599,11 @@
             gap: 5px;
             font-weight: normal;
             cursor: pointer;
-            padding: 8px 12px;
+            padding: 6px 10px;
             background-color: #f5f5f5;
             border-radius: 6px;
             transition: background-color 0.3s;
+            font-size: 0.85rem;
         }
         
         .importance-options label:hover {
@@ -539,48 +614,24 @@
             margin: 0;
         }
         
-        /* 响应式设计 */
-        @media (max-width: 768px) {
-            .navbar {
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .navbar-menu {
-                width: 100%;
-                justify-content: center;
-            }
-            
-            .week-days, .month-calendar {
-                grid-template-columns: 1fr;
-            }
-            
-            .day-column, .calendar-cell {
-                min-height: auto;
-            }
-            
-            .reminder-options {
-                grid-template-columns: 1fr;
-            }
-        }
-        
         /* 其他视图样式 */
         .day-records-view, .month-records-view, .year-records-view {
             display: none;
         }
         
         .records-container {
-            margin-top: 20px;
+            margin-top: 15px;
         }
         
         .record-list-item {
             display: flex;
             align-items: center;
-            gap: 15px;
-            padding: 15px;
+            gap: 10px;
+            padding: 12px;
             border-bottom: 1px solid #eee;
             transition: background-color 0.3s;
             position: relative;
+            font-size: 0.9rem;
         }
         
         .record-list-item:hover {
@@ -589,17 +640,19 @@
         
         .record-date {
             font-weight: bold;
-            min-width: 80px;
+            min-width: 70px;
             color: #2c3e50;
+            font-size: 0.8rem;
         }
         
         .record-object {
             color: #3498db;
             font-weight: bold;
             cursor: pointer;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 4px;
             background-color: #e8f4fc;
+            font-size: 0.8rem;
         }
         
         .record-object:hover {
@@ -608,35 +661,36 @@
         
         .empty-state {
             text-align: center;
-            padding: 40px;
+            padding: 30px;
             color: #7f8c8d;
         }
         
         .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 15px;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
             color: #bdc3c7;
         }
         
         /* 对象管理样式 */
         .object-management {
-            margin-top: 20px;
+            margin-top: 15px;
         }
         
         .object-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 8px;
+            margin-top: 12px;
         }
         
         .object-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
+            gap: 6px;
+            padding: 6px 10px;
             background-color: #f0f0f0;
             border-radius: 6px;
+            font-size: 0.9rem;
         }
         
         .object-item button {
@@ -644,29 +698,50 @@
             border: none;
             color: #e74c3c;
             cursor: pointer;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
         
         .add-object-form {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 8px;
+            margin-top: 12px;
         }
         
         .add-object-form input {
             flex: 1;
-            padding: 8px 12px;
+            padding: 8px 10px;
             border: 1px solid #ddd;
             border-radius: 6px;
+            font-size: 0.9rem;
         }
         
         .add-object-form button {
             background-color: #2ecc71;
             color: white;
             border: none;
-            padding: 8px 15px;
+            padding: 8px 12px;
             border-radius: 6px;
             cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        
+        .sync-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: #2ecc71;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -681,17 +756,22 @@
                 <button id="day-record-btn">日记事</button>
                 <button id="month-record-btn">月记事</button>
                 <button id="year-record-btn">年记事</button>
-                <div class="object-selector">
-                    <select id="object-select">
-                        <option value="">对象选择</option>
-                    </select>
-                </div>
+            </div>
+            <div class="object-selector">
+                <select id="object-select">
+                    <option value="">对象选择</option>
+                </select>
                 <button class="btn-manage-objects" id="manage-objects-btn">管理对象</button>
             </div>
         </div>
         
         <!-- 内容区域 -->
         <div class="content">
+            <!-- 加载状态 -->
+            <div id="loading-state" class="loading">
+                正在同步数据...
+            </div>
+            
             <!-- 周视图 -->
             <div id="week-view" class="week-view">
                 <div class="week-header">
@@ -853,94 +933,146 @@
     </div>
 
     <script>
+        // Firebase 配置 - 请替换为你的实际配置
+        const firebaseConfig = {
+            apiKey: "你的apiKey",
+            authDomain: "你的项目.firebaseapp.com",
+            projectId: "你的项目ID",
+            storageBucket: "你的项目.appspot.com",
+            messagingSenderId: "你的发送者ID",
+            appId: "你的appId"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         // 初始化数据
-        let records = JSON.parse(localStorage.getItem('workRecords')) || [];
-        let objects = JSON.parse(localStorage.getItem('workObjects')) || ['总助', '人事', '财务', '销售', '条装', '品质拉头', '码装', '技术', '绩效考核', '公司记事'];
+        let records = [];
+        let objects = ['总助', '人事', '财务', '销售', '条装', '品质拉头', '码装', '技术', '绩效考核', '公司记事'];
         let currentView = 'week';
         let currentDate = new Date();
         let selectedObject = '';
-        
-        // 初始化示例数据（如果没有数据）
-        if (records.length === 0) {
-            records = [
-                {
-                    id: 1,
-                    date: '2025-10-01',
-                    object: '总助',
-                    content: '准备月度会议材料',
-                    completed: false,
-                    createdAt: '2025-09-28T10:00:00'
-                },
-                {
-                    id: 2,
-                    date: '2025-10-01',
-                    object: '财务',
-                    content: '审核第三季度财务报表',
-                    completed: true,
-                    createdAt: '2025-09-29T14:30:00'
-                },
-                {
-                    id: 3,
-                    date: '2025-10-02',
-                    object: '人事',
-                    content: '面试新员工 - 前端开发岗位',
-                    completed: false,
-                    createdAt: '2025-09-30T09:15:00'
-                },
-                {
-                    id: 4,
-                    date: '2025-10-03',
-                    object: '销售',
-                    content: '与客户洽谈新产品合作',
-                    completed: false,
-                    createdAt: '2025-10-01T16:45:00'
-                },
-                {
-                    id: 5,
-                    date: '2025-10-03',
-                    object: '技术',
-                    content: '系统升级与维护',
-                    completed: false,
-                    createdAt: '2025-10-02T11:20:00'
-                },
-                {
-                    id: 6,
-                    date: '2025-10-04',
-                    object: '绩效考核',
-                    content: '完成员工季度绩效评估',
-                    completed: false,
-                    createdAt: '2025-10-03T13:10:00'
-                }
-            ];
-            localStorage.setItem('workRecords', JSON.stringify(records));
-        }
-        
-        // 保存对象列表
-        localStorage.setItem('workObjects', JSON.stringify(objects));
-        
+        let isOnline = true;
+
         // DOM元素
         const weekView = document.getElementById('week-view');
         const monthView = document.getElementById('month-view');
         const dayRecordsView = document.getElementById('day-records-view');
         const monthRecordsView = document.getElementById('month-records-view');
         const yearRecordsView = document.getElementById('year-records-view');
-        
+        const loadingState = document.getElementById('loading-state');
+
         const addRecordModal = document.getElementById('add-record-modal');
         const reminderModal = document.getElementById('reminder-modal');
         const objectManagementModal = document.getElementById('object-management-modal');
         const addRecordForm = document.getElementById('add-record-form');
         const reminderForm = document.getElementById('reminder-form');
-        
+
         const objectSelect = document.getElementById('object-select');
         const recordObjectSelect = document.getElementById('record-object');
-        
+
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
             initEventListeners();
-            updateObjectSelects();
-            renderWeekView();
+            loadData();
         });
-        
+
+        // 从Firebase加载数据
+        async function loadData() {
+            try {
+                loadingState.style.display = 'block';
+                
+                // 加载记录
+                const recordsSnapshot = await db.collection('records').get();
+                records = [];
+                recordsSnapshot.forEach(doc => {
+                    records.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // 加载对象
+                const objectsSnapshot = await db.collection('objects').get();
+                if (!objectsSnapshot.empty) {
+                    objects = [];
+                    objectsSnapshot.forEach(doc => {
+                        objects.push(doc.data().name);
+                    });
+                }
+                
+                updateObjectSelects();
+                renderWeekView();
+                loadingState.style.display = 'none';
+                showSyncStatus('数据同步成功');
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                loadingState.innerHTML = '数据加载失败，使用本地数据';
+                setTimeout(() => {
+                    loadingState.style.display = 'none';
+                }, 2000);
+            }
+        }
+
+        // 保存记录到Firebase
+        async function saveRecordToFirebase(record) {
+            try {
+                if (record.id) {
+                    await db.collection('records').doc(record.id.toString()).set({
+                        date: record.date,
+                        object: record.object,
+                        content: record.content,
+                        completed: record.completed,
+                        createdAt: record.createdAt
+                    });
+                }
+            } catch (error) {
+                console.error('保存记录失败:', error);
+            }
+        }
+
+        // 删除Firebase中的记录
+        async function deleteRecordFromFirebase(recordId) {
+            try {
+                await db.collection('records').doc(recordId.toString()).delete();
+            } catch (error) {
+                console.error('删除记录失败:', error);
+            }
+        }
+
+        // 保存对象到Firebase
+        async function saveObjectsToFirebase() {
+            try {
+                // 清空现有对象
+                const objectsSnapshot = await db.collection('objects').get();
+                const deletePromises = [];
+                objectsSnapshot.forEach(doc => {
+                    deletePromises.push(db.collection('objects').doc(doc.id).delete());
+                });
+                await Promise.all(deletePromises);
+                
+                // 添加新对象
+                const addPromises = objects.map((object, index) => {
+                    return db.collection('objects').doc(index.toString()).set({
+                        name: object
+                    });
+                });
+                await Promise.all(addPromises);
+            } catch (error) {
+                console.error('保存对象失败:', error);
+            }
+        }
+
+        // 显示同步状态
+        function showSyncStatus(message) {
+            const status = document.createElement('div');
+            status.className = 'sync-status';
+            status.textContent = message;
+            document.body.appendChild(status);
+            
+            setTimeout(() => {
+                status.remove();
+            }, 3000);
+        }
+
         // 初始化事件监听器
         function initEventListeners() {
             // 导航按钮
@@ -991,10 +1123,8 @@
             
             // 添加提醒按钮
             document.getElementById('add-reminder-btn').addEventListener('click', () => {
-                // 设置提醒日期为记事日期
                 const recordDate = document.getElementById('record-date').value;
                 document.getElementById('reminder-date').value = recordDate;
-                
                 reminderModal.style.display = 'flex';
             });
             
@@ -1007,7 +1137,6 @@
             reminderForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 reminderModal.style.display = 'none';
-                // 这里可以保存提醒设置
                 alert('提醒设置已保存！');
             });
             
@@ -1017,21 +1146,19 @@
                 refreshCurrentView();
             });
         }
-        
+
         // 关闭所有模态框
         function closeAllModals() {
             addRecordModal.style.display = 'none';
             reminderModal.style.display = 'none';
             objectManagementModal.style.display = 'none';
         }
-        
+
         // 更新对象选择下拉菜单
         function updateObjectSelects() {
-            // 清空现有选项
             objectSelect.innerHTML = '<option value="">对象选择</option>';
             recordObjectSelect.innerHTML = '<option value="">请选择对象</option>';
             
-            // 添加对象选项
             objects.forEach(object => {
                 const option1 = document.createElement('option');
                 option1.value = object;
@@ -1044,13 +1171,13 @@
                 recordObjectSelect.appendChild(option2);
             });
         }
-        
+
         // 显示对象管理模态框
         function showObjectManagementModal() {
             renderObjectList();
             objectManagementModal.style.display = 'flex';
         }
-        
+
         // 渲染对象列表
         function renderObjectList() {
             const objectList = document.getElementById('object-list');
@@ -1066,7 +1193,6 @@
                 objectList.appendChild(objectItem);
             });
             
-            // 添加删除对象事件监听
             document.querySelectorAll('.delete-object').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const objectToDelete = this.getAttribute('data-object');
@@ -1074,15 +1200,15 @@
                 });
             });
         }
-        
+
         // 添加新对象
-        function addNewObject() {
+        async function addNewObject() {
             const newObjectInput = document.getElementById('new-object-name');
             const newObjectName = newObjectInput.value.trim();
             
             if (newObjectName && !objects.includes(newObjectName)) {
                 objects.push(newObjectName);
-                localStorage.setItem('workObjects', JSON.stringify(objects));
+                await saveObjectsToFirebase();
                 updateObjectSelects();
                 newObjectInput.value = '';
                 renderObjectList();
@@ -1093,16 +1219,15 @@
                 alert('请输入有效的对象名称！');
             }
         }
-        
+
         // 删除对象
-        function deleteObject(objectName) {
+        async function deleteObject(objectName) {
             if (confirm(`确定要删除对象"${objectName}"吗？此操作不会删除已有的记事内容。`)) {
                 objects = objects.filter(obj => obj !== objectName);
-                localStorage.setItem('workObjects', JSON.stringify(objects));
+                await saveObjectsToFirebase();
                 updateObjectSelects();
                 renderObjectList();
                 
-                // 如果当前选择了被删除的对象，清空选择
                 if (selectedObject === objectName) {
                     selectedObject = '';
                     objectSelect.value = '';
@@ -1111,24 +1236,21 @@
                 refreshCurrentView();
             }
         }
-        
+
         // 切换视图
         function switchView(view) {
             currentView = view;
             
-            // 隐藏所有视图
             weekView.style.display = 'none';
             monthView.style.display = 'none';
             dayRecordsView.style.display = 'none';
             monthRecordsView.style.display = 'none';
             yearRecordsView.style.display = 'none';
             
-            // 更新导航按钮状态
             document.querySelectorAll('.navbar-menu button').forEach(btn => {
                 btn.classList.remove('active');
             });
             
-            // 显示当前视图
             if (view === 'month') {
                 document.getElementById('month-view-btn').classList.add('active');
                 monthView.style.display = 'block';
@@ -1151,27 +1273,24 @@
                 renderYearRecordsView();
             }
         }
-        
+
         // 刷新当前视图
         function refreshCurrentView() {
             switchView(currentView);
         }
-        
+
         // 渲染周视图
         function renderWeekView() {
             const weekDaysContainer = document.getElementById('week-days');
             weekDaysContainer.innerHTML = '';
             
-            // 获取当前周的日期范围
             const weekDates = getWeekDates(currentDate);
             
-            // 更新周标题
             const startDate = formatDate(weekDates[0], 'YYYY年MM月DD日');
             const endDate = formatDate(weekDates[6], 'YYYY年MM月DD日');
             const weekNumber = getWeekNumber(weekDates[0]);
             document.getElementById('week-title').textContent = `${startDate} - ${endDate} (第${weekNumber}周)`;
             
-            // 生成一周的日期列
             const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
             
             weekDates.forEach((date, index) => {
@@ -1190,7 +1309,6 @@
                 const recordsList = document.createElement('div');
                 recordsList.className = 'records-list';
                 
-                // 获取当天的记录
                 const dayRecords = getRecordsByDate(dateStr);
                 
                 if (dayRecords.length > 0) {
@@ -1216,15 +1334,13 @@
                 weekDaysContainer.appendChild(dayColumn);
             });
             
-            // 添加复选框事件监听
             document.querySelectorAll('.record-item input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     toggleRecordCompletion(recordId, this.checked);
                 });
             });
             
-            // 添加对象标签事件监听
             document.querySelectorAll('.object-tag').forEach(tag => {
                 tag.addEventListener('click', function() {
                     const object = this.getAttribute('data-object');
@@ -1234,26 +1350,23 @@
                 });
             });
             
-            // 添加删除记录事件监听
             document.querySelectorAll('.delete-record').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     deleteRecord(recordId);
                 });
             });
         }
-        
+
         // 渲染月视图
         function renderMonthView() {
             const monthCalendar = document.getElementById('month-calendar');
             monthCalendar.innerHTML = '';
             
-            // 更新月标题
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1;
             document.getElementById('month-title').textContent = `${year}年${month}月`;
             
-            // 生成日历表头
             const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
             weekdays.forEach(day => {
                 const headerCell = document.createElement('div');
@@ -1262,36 +1375,26 @@
                 monthCalendar.appendChild(headerCell);
             });
             
-            // 获取当月第一天和最后一天
             const firstDay = new Date(year, month - 1, 1);
             const lastDay = new Date(year, month, 0);
-            
-            // 获取当月第一天是星期几（0-6，0是周日）
             const firstDayWeekday = firstDay.getDay();
-            
-            // 获取上个月的最后几天
             const prevMonthLastDay = new Date(year, month - 1, 0).getDate();
             
-            // 生成日历格子
             for (let i = 0; i < 42; i++) {
                 const cell = document.createElement('div');
                 
                 if (i < firstDayWeekday) {
-                    // 上个月的日期
                     const date = prevMonthLastDay - firstDayWeekday + i + 1;
                     cell.className = 'calendar-cell other-month';
                     cell.innerHTML = `<div class="cell-date">${date}</div>`;
                 } else if (i - firstDayWeekday + 1 > lastDay.getDate()) {
-                    // 下个月的日期
                     const date = i - firstDayWeekday - lastDay.getDate() + 1;
                     cell.className = 'calendar-cell other-month';
                     cell.innerHTML = `<div class="cell-date">${date}</div>`;
                 } else {
-                    // 当月的日期
                     const date = i - firstDayWeekday + 1;
                     const dateStr = `${year}-${month.toString().padStart(2, '0')}-${date.toString().padStart(2, '0')}`;
                     
-                    // 检查是否是今天
                     const today = new Date();
                     const isToday = today.getFullYear() === year && 
                                    today.getMonth() === month - 1 && 
@@ -1299,7 +1402,6 @@
                     
                     cell.className = `calendar-cell ${isToday ? 'today' : ''}`;
                     
-                    // 获取当天的记录
                     const dayRecords = getRecordsByDate(dateStr);
                     const completedCount = dayRecords.filter(r => r.completed).length;
                     
@@ -1320,18 +1422,16 @@
                 monthCalendar.appendChild(cell);
             }
         }
-        
+
         // 渲染日记事视图
         function renderDayRecordsView() {
             const dayRecordsContainer = document.getElementById('day-records-container');
             dayRecordsContainer.innerHTML = '';
             
-            // 更新日期标题
             const dateStr = formatDate(currentDate, 'YYYY年MM月DD日');
             const weekday = ['日', '一', '二', '三', '四', '五', '六'][currentDate.getDay()];
             document.getElementById('day-title').textContent = `${dateStr} 星期${weekday}`;
             
-            // 获取当天的记录
             const dateKey = formatDate(currentDate, 'YYYY-MM-DD');
             const dayRecords = getRecordsByDate(dateKey);
             
@@ -1360,15 +1460,13 @@
                 `;
             }
             
-            // 添加复选框事件监听
             document.querySelectorAll('.record-list-item input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     toggleRecordCompletion(recordId, this.checked);
                 });
             });
             
-            // 添加对象标签事件监听
             document.querySelectorAll('.record-object').forEach(tag => {
                 tag.addEventListener('click', function() {
                     const object = this.getAttribute('data-object');
@@ -1378,30 +1476,26 @@
                 });
             });
             
-            // 添加删除记录事件监听
             document.querySelectorAll('.delete-record').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     deleteRecord(recordId);
                 });
             });
         }
-        
+
         // 渲染月记事视图
         function renderMonthRecordsView() {
             const monthRecordsContainer = document.getElementById('month-records-container');
             monthRecordsContainer.innerHTML = '';
             
-            // 更新月标题
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1;
             document.getElementById('month-records-title').textContent = `${year}年${month}月记事`;
             
-            // 获取当月的记录
             const monthRecords = getRecordsByMonth(year, month);
             
             if (monthRecords.length > 0) {
-                // 按对象分组
                 const groupedRecords = groupRecordsByObject(monthRecords);
                 
                 Object.keys(groupedRecords).forEach(object => {
@@ -1417,7 +1511,6 @@
                         const recordItem = document.createElement('div');
                         recordItem.className = `record-list-item ${record.completed ? 'checked' : ''}`;
                         
-                        // 格式化日期和序号
                         const recordDate = new Date(record.date);
                         const day = recordDate.getDate().toString().padStart(2, '0');
                         const contentWithNumber = `${day}${record.content}`;
@@ -1444,37 +1537,32 @@
                 `;
             }
             
-            // 添加复选框事件监听
             document.querySelectorAll('.record-list-item input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     toggleRecordCompletion(recordId, this.checked);
                 });
             });
             
-            // 添加删除记录事件监听
             document.querySelectorAll('.delete-record').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     deleteRecord(recordId);
                 });
             });
         }
-        
+
         // 渲染年记事视图
         function renderYearRecordsView() {
             const yearRecordsContainer = document.getElementById('year-records-container');
             yearRecordsContainer.innerHTML = '';
             
-            // 更新年标题
             const year = currentDate.getFullYear();
             document.getElementById('year-title').textContent = `${year}年记事`;
             
-            // 获取当年的记录
             const yearRecords = getRecordsByYear(year);
             
             if (yearRecords.length > 0) {
-                // 按对象分组
                 const groupedRecords = groupRecordsByObject(yearRecords);
                 
                 Object.keys(groupedRecords).forEach(object => {
@@ -1490,7 +1578,6 @@
                         const recordItem = document.createElement('div');
                         recordItem.className = `record-list-item ${record.completed ? 'checked' : ''}`;
                         
-                        // 格式化日期和序号
                         const recordDate = new Date(record.date);
                         const month = (recordDate.getMonth() + 1).toString().padStart(2, '0');
                         const day = recordDate.getDate().toString().padStart(2, '0');
@@ -1518,26 +1605,23 @@
                 `;
             }
             
-            // 添加复选框事件监听
             document.querySelectorAll('.record-list-item input[type="checkbox"]').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     toggleRecordCompletion(recordId, this.checked);
                 });
             });
             
-            // 添加删除记录事件监听
             document.querySelectorAll('.delete-record').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    const recordId = parseInt(this.getAttribute('data-id'));
+                    const recordId = this.getAttribute('data-id');
                     deleteRecord(recordId);
                 });
             });
         }
-        
+
         // 显示添加记事模态框
         function showAddRecordModal() {
-            // 设置默认日期为当前视图的日期
             let defaultDate;
             if (currentView === 'day') {
                 defaultDate = formatDate(currentDate, 'YYYY-MM-DD');
@@ -1551,16 +1635,15 @@
             
             addRecordModal.style.display = 'flex';
         }
-        
+
         // 保存记录
-        function saveRecord() {
+        async function saveRecord() {
             const date = document.getElementById('record-date').value;
             const object = document.getElementById('record-object').value;
             const content = document.getElementById('record-content').value;
             
-            // 创建新记录
             const newRecord = {
-                id: Date.now(),
+                id: Date.now().toString(),
                 date: date,
                 object: object,
                 content: content,
@@ -1568,43 +1651,38 @@
                 createdAt: new Date().toISOString()
             };
             
-            // 添加到记录数组
             records.push(newRecord);
+            await saveRecordToFirebase(newRecord);
             
-            // 保存到本地存储
-            localStorage.setItem('workRecords', JSON.stringify(records));
-            
-            // 关闭模态框
             addRecordModal.style.display = 'none';
-            
-            // 重置表单
             addRecordForm.reset();
-            
-            // 刷新当前视图
             refreshCurrentView();
             
             alert('记事已保存！');
+            showSyncStatus('数据已同步');
         }
-        
+
         // 删除记录
-        function deleteRecord(recordId) {
+        async function deleteRecord(recordId) {
             if (confirm('确定要删除这条记事吗？')) {
                 records = records.filter(record => record.id !== recordId);
-                localStorage.setItem('workRecords', JSON.stringify(records));
+                await deleteRecordFromFirebase(recordId);
                 refreshCurrentView();
+                showSyncStatus('数据已同步');
             }
         }
-        
+
         // 切换记录完成状态
-        function toggleRecordCompletion(recordId, completed) {
+        async function toggleRecordCompletion(recordId, completed) {
             const recordIndex = records.findIndex(r => r.id === recordId);
             if (recordIndex !== -1) {
                 records[recordIndex].completed = completed;
-                localStorage.setItem('workRecords', JSON.stringify(records));
+                await saveRecordToFirebase(records[recordIndex]);
                 refreshCurrentView();
+                showSyncStatus('数据已同步');
             }
         }
-        
+
         // 工具函数：获取一周的日期
         function getWeekDates(date) {
             const day = date.getDay();
@@ -1620,14 +1698,14 @@
             
             return weekDates;
         }
-        
+
         // 工具函数：获取周数
         function getWeekNumber(date) {
             const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
             const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
             return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
         }
-        
+
         // 工具函数：格式化日期
         function formatDate(date, format) {
             const year = date.getFullYear();
@@ -1644,12 +1722,12 @@
             
             return `${year}-${month}-${day}`;
         }
-        
+
         // 工具函数：根据日期获取记录
         function getRecordsByDate(date) {
             return records.filter(record => record.date === date);
         }
-        
+
         // 工具函数：根据年月获取记录
         function getRecordsByMonth(year, month) {
             const monthStr = month.toString().padStart(2, '0');
@@ -1659,7 +1737,7 @@
                        (recordDate.getMonth() + 1) === month;
             });
         }
-        
+
         // 工具函数：根据年获取记录
         function getRecordsByYear(year) {
             return records.filter(record => {
@@ -1667,7 +1745,7 @@
                 return recordDate.getFullYear() === year;
             });
         }
-        
+
         // 工具函数：按对象分组记录
         function groupRecordsByObject(records) {
             return records.reduce((groups, record) => {
@@ -1678,31 +1756,31 @@
                 return groups;
             }, {});
         }
-        
+
         // 周视图导航
         function changeWeek(offset) {
             currentDate.setDate(currentDate.getDate() + offset * 7);
             renderWeekView();
         }
-        
+
         // 月视图导航
         function changeMonth(offset) {
             currentDate.setMonth(currentDate.getMonth() + offset);
             renderMonthView();
         }
-        
+
         // 日记事导航
         function changeDay(offset) {
             currentDate.setDate(currentDate.getDate() + offset);
             renderDayRecordsView();
         }
-        
+
         // 月记事导航
         function changeMonthRecord(offset) {
             currentDate.setMonth(currentDate.getMonth() + offset);
             renderMonthRecordsView();
         }
-        
+
         // 年记事导航
         function changeYear(offset) {
             currentDate.setFullYear(currentDate.getFullYear() + offset);
